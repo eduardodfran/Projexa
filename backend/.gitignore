@@ -1,0 +1,66 @@
+# Dependencies
+/node_modules
+/vendor
+/bower_components
+
+# Build output
+/dist
+/build
+/out
+/public # Adjust if your framework uses 'public' for source files
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editor directories
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+*.tmp
+*~
+
+# Coverage output
+coverage/
+.nyc_output/
+
+# Optional: Compiled files (e.g., TypeScript to JavaScript)
+# *.js
+# *.js.map
+# *.d.ts
+
+# Optional: Database files
+# *.sqlite
+# *.db
+
+# Optional: Uploads directory
+# /uploads
