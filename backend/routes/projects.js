@@ -78,6 +78,10 @@ router.get('/', authMiddleware, async (req, res) => {
     })
       .populate('owner', 'name email')
       .populate('team', 'name email')
+      .populate({
+        path: 'tasks', // Populate the tasks array
+        select: 'status', // Select only the status field (and _id by default)
+      })
       .sort({ createdAt: -1 })
 
     res.json({
@@ -106,12 +110,11 @@ router.get('/:id', authMiddleware, async (req, res) => {
       .populate('owner', 'name email')
       .populate('team', 'name email')
       .populate({
-        path: 'tasks',
-        select: 'title status priority deadline assignedTo',
-        populate: {
-          path: 'assignedTo',
-          select: 'name email',
-        },
+        path: 'tasks', // Keep full population here for ProjectDetails
+        populate: [
+          { path: 'assignedTo', select: 'name email' },
+          { path: 'createdBy', select: 'name email' },
+        ],
       })
 
     if (!project) {
@@ -125,12 +128,10 @@ router.get('/:id', authMiddleware, async (req, res) => {
       project.owner._id.toString() !== req.user.id &&
       !project.team.some((member) => member._id.toString() === req.user.id)
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: 'Not authorized to view this project',
-        })
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view this project',
+      })
     }
 
     res.json({
@@ -179,12 +180,10 @@ router.put(
 
       // Check if user is authorized to update this project
       if (project.owner.toString() !== req.user.id) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: 'Not authorized to update this project',
-          })
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update this project',
+        })
       }
 
       // Update project fields
@@ -257,12 +256,10 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
     // Check if user is authorized to delete this project
     if (project.owner.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: 'Not authorized to delete this project',
-        })
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete this project',
+      })
     }
 
     // Remove project references from users
@@ -285,7 +282,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     await mongoose.model('Task').deleteMany({ project: project._id })
 
     // Delete project
-    await project.remove()
+    await Project.deleteOne({ _id: project._id })
 
     res.json({
       success: true,

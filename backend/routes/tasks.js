@@ -52,12 +52,10 @@ router.post(
         projectExists.owner.toString() !== req.user.id &&
         !projectExists.team.some((member) => member.toString() === req.user.id)
       ) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: 'Not authorized to create tasks in this project',
-          })
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to create tasks in this project',
+        })
       }
 
       // If task is assigned to someone, verify that user is part of the project
@@ -66,12 +64,10 @@ router.post(
         assignedTo !== projectExists.owner.toString() &&
         !projectExists.team.some((member) => member.toString() === assignedTo)
       ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: 'Assigned user must be a member of the project',
-          })
+        return res.status(400).json({
+          success: false,
+          message: 'Assigned user must be a member of the project',
+        })
       }
 
       // Create new task
@@ -218,7 +214,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const { title, description, status, priority, assignedTo, deadline } =
       req.body
 
-    // Find task
+    // Find task and populate necessary fields for authorization check
     let task = await Task.findById(req.params.id).populate(
       'project',
       'owner team'
@@ -228,11 +224,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Task not found' })
     }
 
-    // Check if user is authorized to update this task (project owner, task creator)
-    if (
-      task.createdBy.toString() !== req.user.id &&
-      task.project.owner.toString() !== req.user.id
-    ) {
+    // Check if user is authorized to update this task (project owner, task creator, or team member)
+    const isOwner = task.project.owner.toString() === req.user.id
+    const isCreator = task.createdBy.toString() === req.user.id
+    const isTeamMember = task.project.team.some(
+      (member) => member.toString() === req.user.id
+    )
+
+    if (!isOwner && !isCreator && !isTeamMember) {
       return res
         .status(403)
         .json({ success: false, message: 'Not authorized to update this task' })
@@ -240,22 +239,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     // If changing assignee, verify new assignee is part of the project
     if (
-      assignedTo &&
-      assignedTo !== task.project.owner.toString() &&
-      !task.project.team.some((member) => member.toString() === assignedTo)
+      assignedTo && // Check if assignedTo is being changed
+      assignedTo !== task.project.owner.toString() && // New assignee is not the owner
+      !task.project.team.some((member) => member.toString() === assignedTo) // New assignee is not in the team
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: 'Assigned user must be a member of the project',
-        })
+      return res.status(400).json({
+        success: false,
+        message: 'Assigned user must be a member of the project',
+      })
     }
 
-    // Handle assignee change
+    // Handle assignee change logic (removing from old, adding to new)
     if (
-      assignedTo !== undefined &&
-      assignedTo !== task.assignedTo?.toString()
+      assignedTo !== undefined && // Check if assignedTo field is present in the request
+      assignedTo !== (task.assignedTo ? task.assignedTo.toString() : null) // Check if the value is actually different
     ) {
       // Remove task from previous assignee if any
       if (task.assignedTo) {
@@ -264,7 +261,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         })
       }
 
-      // Add task to new assignee if any
+      // Add task to new assignee if any (and not null/empty string)
       if (assignedTo) {
         await User.findByIdAndUpdate(assignedTo, {
           $push: { assignedTasks: task._id },
@@ -277,19 +274,34 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (description) task.description = description
     if (status) task.status = status
     if (priority) task.priority = priority
-    if (assignedTo !== undefined) task.assignedTo = assignedTo || null
-    if (deadline) task.deadline = new Date(deadline)
+    // Ensure assignedTo is updated correctly, allowing it to be set to null
+    if (assignedTo !== undefined) {
+      task.assignedTo = assignedTo ? assignedTo : null
+    }
+    if (deadline !== undefined) {
+      // Allow setting deadline to null or a new date
+      task.deadline = deadline ? new Date(deadline) : null
+    }
 
     // Save task
     const updatedTask = await task.save()
 
+    // Populate the updated task before sending response
+    const populatedTask = await Task.findById(updatedTask._id)
+      .populate('project', 'title owner team')
+      .populate('assignedTo', 'name email')
+      .populate('createdBy', 'name email')
+      .populate('comments.user', 'name email')
+
     res.json({
       success: true,
-      data: updatedTask,
+      data: populatedTask, // Send back the populated task
     })
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ success: false, message: 'Server Error' })
+    console.error('Error updating task:', err) // Log the specific error
+    res
+      .status(500)
+      .json({ success: false, message: 'Server Error updating task' })
   }
 })
 
@@ -334,7 +346,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 
     // Delete task
-    await task.remove()
+    await Task.deleteOne({ _id: task._id })
 
     res.json({
       success: true,
@@ -385,12 +397,10 @@ router.post(
         task.project.owner.toString() !== req.user.id &&
         !task.project.team.some((member) => member.toString() === req.user.id)
       ) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: 'Not authorized to comment on this task',
-          })
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to comment on this task',
+        })
       }
 
       // Add comment

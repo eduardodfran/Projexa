@@ -1,4 +1,5 @@
 - **EXECUTE COMMANDS USING ; TO SEPERATE, INSTEAD OF &&**
+- add a simple comment on each component/divs so that i know what that component/divs is all about
 
 ✅ Goal
 Build a fully functional project management web app.
@@ -53,12 +54,12 @@ Title, description, status (To Do, In Progress, Done)
 
 Assignee, deadline, priority
 
-Task CRUD operations via API
+Task CRUD operations via API ✅
 
-📍 Phase 3: Kanban Board UI
+📍 Phase 3: Kanban Board UI 🔄
 Goal: Implement drag-and-drop interface for task management
 
-Use a library like react-beautiful-dnd or dnd-kit
+Use @dnd-kit library for drag-and-drop (https://dndkit.com)
 
 Tasks move across columns (To Do → In Progress → Done)
 

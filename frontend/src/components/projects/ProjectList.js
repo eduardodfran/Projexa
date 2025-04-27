@@ -71,16 +71,16 @@ const ProjectList = () => {
                     {project.title}
                   </h3>
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize
                     ${
-                      project.status === 'Completed'
+                      project.status === 'Done'
                         ? 'bg-green-100 text-green-800'
                         : project.status === 'In Progress'
                         ? 'bg-blue-100 text-blue-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}
                   >
-                    {project.status}
+                    {project.status || 'To Do'}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-[#E2E8F0] line-clamp-2">

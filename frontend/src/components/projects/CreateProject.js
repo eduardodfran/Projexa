@@ -68,7 +68,8 @@ const CreateProject = () => {
 
   return (
     <div className="min-h-screen bg-[#111827] py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Changed max-w-4xl to max-w-7xl */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-[#FFFFFF]">
             Create New Project

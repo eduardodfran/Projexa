@@ -1,6 +1,8 @@
-import React, { createContext, useState, useContext } from 'react'
-import axios from 'axios'
-import { AuthContext } from './AuthContext'
+import React, { createContext, useState, useContext, useEffect } from 'react'
+// import axios from '../utils/axiosConfig' // Revert this change
+import axios from 'axios' // Use standard axios import
+import AuthContext from './AuthContext' // Correct import path if needed
+import ProjectContext from './ProjectContext' // Correct import path if needed
 
 export const TaskContext = createContext()
 
@@ -10,6 +12,15 @@ export const TaskProvider = ({ children }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const { token } = useContext(AuthContext)
+  const { updateTaskInProject, getProjects } = useContext(ProjectContext)
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    } else {
+      delete axios.defaults.headers.common['Authorization']
+    }
+  }, [token])
 
   // Get all tasks for a project
   const getProjectTasks = async (projectId) => {
@@ -56,7 +67,11 @@ export const TaskProvider = ({ children }) => {
     setLoading(true)
     try {
       const res = await axios.post('/tasks', taskData)
-      setTasks([res.data.data, ...tasks])
+
+      if (getProjects) {
+        await getProjects()
+      }
+
       setError(null)
       return res.data.data
     } catch (err) {
@@ -75,14 +90,35 @@ export const TaskProvider = ({ children }) => {
     setLoading(true)
     try {
       const res = await axios.put(`/tasks/${id}`, taskData)
-      setTasks(tasks.map((task) => (task._id === id ? res.data.data : task)))
+      const { task: updatedTaskData, project: updatedProjectData } =
+        res.data.data
 
+      setTasks(tasks.map((task) => (task._id === id ? updatedTaskData : task)))
       if (currentTask && currentTask._id === id) {
-        setCurrentTask(res.data.data)
+        setCurrentTask(updatedTaskData)
+      }
+
+      if (updateTaskInProject && updatedTaskData.project) {
+        const projectId =
+          typeof updatedTaskData.project === 'object'
+            ? updatedTaskData.project._id
+            : updatedTaskData.project
+
+        if (projectId) {
+          updateTaskInProject(projectId, updatedTaskData, updatedProjectData)
+        } else {
+          console.warn(
+            'Project ID missing in updated task data, cannot update ProjectContext'
+          )
+        }
+      } else if (!updateTaskInProject) {
+        console.warn(
+          'updateTaskInProject function not available from ProjectContext.'
+        )
       }
 
       setError(null)
-      return res.data.data
+      return updatedTaskData
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating task')
       console.error('Error updating task:', err)
@@ -103,6 +139,10 @@ export const TaskProvider = ({ children }) => {
 
       if (currentTask && currentTask._id === id) {
         setCurrentTask(null)
+      }
+
+      if (getProjects) {
+        await getProjects()
       }
 
       setError(null)

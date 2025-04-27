@@ -35,9 +35,11 @@ export const ProjectProvider = ({ children }) => {
     setLoading(true)
     try {
       const res = await axios.get(`/projects/${id}`)
-      setCurrentProject(res.data.data)
+      // Ensure the team member data is properly populated
+      const project = res.data.data
+      setCurrentProject(project)
       setError(null)
-      return res.data.data
+      return project
     } catch (err) {
       setError(err.response?.data?.message || 'Error fetching project')
       console.error('Error fetching project:', err)
@@ -54,9 +56,11 @@ export const ProjectProvider = ({ children }) => {
     setLoading(true)
     try {
       const res = await axios.post('/projects', projectData)
-      setProjects([res.data.data, ...projects])
+      // Make sure we get the fully populated project data
+      const createdProject = res.data.data
+      setProjects([createdProject, ...projects])
       setError(null)
-      return res.data.data
+      return createdProject
     } catch (err) {
       setError(err.response?.data?.message || 'Error creating project')
       console.error('Error creating project:', err)
@@ -73,18 +77,22 @@ export const ProjectProvider = ({ children }) => {
     setLoading(true)
     try {
       const res = await axios.put(`/projects/${id}`, projectData)
+      const updatedProject = res.data.data
+
+      // Update projects list with the updated project
       setProjects(
         projects.map((project) =>
-          project._id === id ? res.data.data : project
+          project._id === id ? updatedProject : project
         )
       )
 
+      // If this is the current project, update it
       if (currentProject && currentProject._id === id) {
-        setCurrentProject(res.data.data)
+        setCurrentProject(updatedProject)
       }
 
       setError(null)
-      return res.data.data
+      return updatedProject
     } catch (err) {
       setError(err.response?.data?.message || 'Error updating project')
       console.error('Error updating project:', err)
@@ -118,6 +126,57 @@ export const ProjectProvider = ({ children }) => {
     }
   }
 
+  // Function to update a specific task AND project status within the projects state
+  const updateTaskInProject = (projectId, updatedTask, updatedProjectData) => {
+    setProjects((prevProjects) =>
+      prevProjects.map((project) => {
+        if (project._id === projectId) {
+          // Found the project
+          let newTasks = project.tasks || []
+          if (project.tasks) {
+            // Update the task in its list
+            newTasks = project.tasks.map((task) =>
+              task && typeof task === 'object' && task._id === updatedTask._id
+                ? updatedTask
+                : task
+            )
+          }
+
+          // Merge updated project data (like status) if provided
+          const finalProject = updatedProjectData
+            ? { ...project, ...updatedProjectData, tasks: newTasks }
+            : { ...project, tasks: newTasks }
+
+          return finalProject
+        }
+        return project // Return project unchanged if no match
+      })
+    )
+
+    // Also update currentProject if it's the one affected
+    if (currentProject && currentProject._id === projectId) {
+      setCurrentProject((prevCurrentProject) => {
+        if (!prevCurrentProject) return null
+
+        let newTasks = prevCurrentProject.tasks || []
+        if (prevCurrentProject.tasks) {
+          newTasks = prevCurrentProject.tasks.map((task) =>
+            task && typeof task === 'object' && task._id === updatedTask._id
+              ? updatedTask
+              : task
+          )
+        }
+
+        // Merge updated project data here too
+        const finalProject = updatedProjectData
+          ? { ...prevCurrentProject, ...updatedProjectData, tasks: newTasks }
+          : { ...prevCurrentProject, tasks: newTasks }
+
+        return finalProject
+      })
+    }
+  }
+
   // Load projects when token changes
   useEffect(() => {
     if (token) {
@@ -139,6 +198,7 @@ export const ProjectProvider = ({ children }) => {
         deleteProject,
         setCurrentProject,
         setError,
+        updateTaskInProject,
       }}
     >
       {children}

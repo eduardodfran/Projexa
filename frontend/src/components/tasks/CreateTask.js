@@ -1,8 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react'
 import TaskContext from '../../context/TaskContext'
-import ProjectContext from '../../context/ProjectContext'
 
-const CreateTask = ({ projectId, onTaskCreated }) => {
+const CreateTask = ({ projectId, onTaskCreated, currentProject }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -19,7 +18,13 @@ const CreateTask = ({ projectId, onTaskCreated }) => {
     error: taskError,
     setError: setTaskError,
   } = useContext(TaskContext)
-  const { currentProject } = useContext(ProjectContext)
+
+  // Add an effect to log current project whenever it changes
+  useEffect(() => {
+    if (currentProject && currentProject.team) {
+      console.log('Project team members:', currentProject.team)
+    }
+  }, [currentProject])
 
   const { title, description, status, priority, assignedTo, deadline } =
     formData
@@ -162,13 +167,17 @@ const CreateTask = ({ projectId, onTaskCreated }) => {
               className="appearance-none block w-full px-3 py-2 border border-[#4A5568] rounded-md shadow-sm placeholder-gray-400 bg-[#111827] text-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#3182CE] focus:border-[#3182CE] sm:text-sm transition-all duration-200"
             >
               <option value="">Unassigned</option>
-              <option value={currentProject.owner._id}>
-                {currentProject.owner.name} (Owner)
-              </option>
-              {currentProject.team &&
+              {currentProject && currentProject.owner && (
+                <option value={currentProject.owner._id}>
+                  {currentProject.owner.name} (Owner)
+                </option>
+              )}
+              {currentProject &&
+                currentProject.team &&
+                currentProject.team.length > 0 &&
                 currentProject.team.map((member) => (
                   <option key={member._id} value={member._id}>
-                    {member.name}
+                    {member.name} {member.email ? `(${member.email})` : ''}
                   </option>
                 ))}
             </select>
